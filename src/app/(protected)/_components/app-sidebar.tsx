@@ -7,6 +7,7 @@ import {
   Stethoscope,
   UsersRound,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -71,7 +72,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b p-4">
-        Logo
+        <Image src="/logomarca.svg" alt="Logo" width={137} height={28} />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
