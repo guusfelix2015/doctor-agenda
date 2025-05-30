@@ -1,9 +1,10 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { PageActions, PageContainer, PageContent, PageHeader, PageHeaderContent, PageHeaderDescription, PageHeaderTitle } from "@/components/ui/page-container";
 import { auth } from "@/lib/auth";
+
+import AddDoctorButton from "./_components/add-doctor-button";
 
 const DoctorsPage = async () => {
   const session = await auth.api.getSession({
@@ -26,7 +27,7 @@ const DoctorsPage = async () => {
           <PageHeaderDescription>Gerencie os médicos cadastrados no sistema</PageHeaderDescription>
         </PageHeaderContent>
         <PageActions>
-          <Button>Adicionar Médico</Button>
+          <AddDoctorButton />
         </PageActions>
       </PageHeader>
       <PageContent>
