@@ -21,9 +21,9 @@ export const upsertDoctor = actionClient
     const availableToTime = parsedInput.availableToTime; // 16:00:00
 
     const availableFromTimeUTC = dayjs()
-      .set("hour", parseInt(availableFromTime.split(":")[0]))
-      .set("minute", parseInt(availableFromTime.split(":")[1]))
-      .set("second", parseInt(availableFromTime.split(":")[2]))
+      .set("hour", parseInt(availableFromTime.split(":")[0])) // 15
+      .set("minute", parseInt(availableFromTime.split(":")[1])) // 30
+      .set("second", parseInt(availableFromTime.split(":")[2])) // 00
       .utc();
     const availableToTimeUTC = dayjs()
       .set("hour", parseInt(availableToTime.split(":")[0]))
