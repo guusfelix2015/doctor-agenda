@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAction } from "next-safe-action/hooks";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -26,16 +27,13 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { doctorsTable } from "@/db/schema";
 
 import { medicalSpecialties } from "../_constants";
-
 
 const formSchema = z
   .object({
@@ -74,28 +72,38 @@ interface UpsertDoctorFormProps {
 }
 
 const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    shouldUnregister: true,
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: doctor?.name ?? "",
-      specialty: doctor?.specialty ?? "",
-      appointmentPrice: doctor?.appointmentPriceInCents
-        ? doctor.appointmentPriceInCents / 100
-        : 0,
-      availableFromWeekDay: doctor?.availableFromWeekDay?.toString() ?? "1",
-      availableToWeekDay: doctor?.availableToWeekDay?.toString() ?? "5",
-      availableFromTime: doctor?.availableFromTime ?? "",
-      availableToTime: doctor?.availableToTime ?? "",
-    },
+  const getDefaultValues = () => ({
+    name: doctor?.name ?? "",
+    specialty: doctor?.specialty ?? "",
+    appointmentPrice: doctor?.appointmentPriceInCents
+      ? doctor.appointmentPriceInCents / 100
+      : 0,
+    availableFromWeekDay: doctor?.availableFromWeekDay?.toString() ?? "1",
+    availableToWeekDay: doctor?.availableToWeekDay?.toString() ?? "5",
+    availableFromTime: doctor?.availableFromTime ?? "",
+    availableToTime: doctor?.availableToTime ?? "",
   });
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: getDefaultValues(),
+  });
+
+  // Reset form quando o doctor mudar
+  useEffect(() => {
+    const defaultValues = getDefaultValues();
+    form.reset(defaultValues);
+  }, [doctor?.id, form]);
+
   const upsertDoctorAction = useAction(upsertDoctor, {
     onSuccess: () => {
-      toast.success("Médico adicionado com sucesso.");
+      const message = doctor ? "Médico editado com sucesso." : "Médico adicionado com sucesso.";
+      toast.success(message);
       onSuccess?.();
     },
     onError: () => {
-      toast.error("Erro ao adicionar médico.");
+      const message = doctor ? "Erro ao editar médico." : "Erro ao adicionar médico.";
+      toast.error(message);
     },
   });
 
@@ -112,7 +120,7 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>{doctor ? doctor.name : "Adicionar médico"}</DialogTitle>
+        <DialogTitle>{doctor ? `Editar ${doctor.name}` : "Adicionar médico"}</DialogTitle>
         <DialogDescription>
           {doctor
             ? "Edite as informações desse médico."
@@ -128,7 +136,7 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
               <FormItem>
                 <FormLabel>Nome</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input placeholder="Digite o nome completo do médico" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -140,10 +148,7 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Especialidade</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione uma especialidade" />
@@ -180,6 +185,7 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
                   thousandSeparator="."
                   customInput={Input}
                   prefix="R$"
+                  placeholder="R$ 0,00"
                 />
                 <FormMessage />
               </FormItem>
@@ -191,10 +197,7 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Dia inicial de disponibilidade</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione um dia" />
@@ -220,10 +223,7 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Dia final de disponibilidade</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value?.toString()}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione um dia" />
@@ -248,66 +248,10 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
             name="availableFromTime"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Horário inicial de disponibilidade</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um horário" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Manhã</SelectLabel>
-                      <SelectItem value="05:00:00">05:00</SelectItem>
-                      <SelectItem value="05:30:00">05:30</SelectItem>
-                      <SelectItem value="06:00:00">06:00</SelectItem>
-                      <SelectItem value="06:30:00">06:30</SelectItem>
-                      <SelectItem value="07:00:00">07:00</SelectItem>
-                      <SelectItem value="07:30:00">07:30</SelectItem>
-                      <SelectItem value="08:00:00">08:00</SelectItem>
-                      <SelectItem value="08:30:00">08:30</SelectItem>
-                      <SelectItem value="09:00:00">09:00</SelectItem>
-                      <SelectItem value="09:30:00">09:30</SelectItem>
-                      <SelectItem value="10:00:00">10:00</SelectItem>
-                      <SelectItem value="10:30:00">10:30</SelectItem>
-                      <SelectItem value="11:00:00">11:00</SelectItem>
-                      <SelectItem value="11:30:00">11:30</SelectItem>
-                      <SelectItem value="12:00:00">12:00</SelectItem>
-                      <SelectItem value="12:30:00">12:30</SelectItem>
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel>Tarde</SelectLabel>
-                      <SelectItem value="13:00:00">13:00</SelectItem>
-                      <SelectItem value="13:30:00">13:30</SelectItem>
-                      <SelectItem value="14:00:00">14:00</SelectItem>
-                      <SelectItem value="14:30:00">14:30</SelectItem>
-                      <SelectItem value="15:00:00">15:00</SelectItem>
-                      <SelectItem value="15:30:00">15:30</SelectItem>
-                      <SelectItem value="16:00:00">16:00</SelectItem>
-                      <SelectItem value="16:30:00">16:30</SelectItem>
-                      <SelectItem value="17:00:00">17:00</SelectItem>
-                      <SelectItem value="17:30:00">17:30</SelectItem>
-                      <SelectItem value="18:00:00">18:00</SelectItem>
-                      <SelectItem value="18:30:00">18:30</SelectItem>
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel>Noite</SelectLabel>
-                      <SelectItem value="19:00:00">19:00</SelectItem>
-                      <SelectItem value="19:30:00">19:30</SelectItem>
-                      <SelectItem value="20:00:00">20:00</SelectItem>
-                      <SelectItem value="20:30:00">20:30</SelectItem>
-                      <SelectItem value="21:00:00">21:00</SelectItem>
-                      <SelectItem value="21:30:00">21:30</SelectItem>
-                      <SelectItem value="22:00:00">22:00</SelectItem>
-                      <SelectItem value="22:30:00">22:30</SelectItem>
-                      <SelectItem value="23:00:00">23:00</SelectItem>
-                      <SelectItem value="23:30:00">23:30</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <FormLabel>Horário inicial</FormLabel>
+                <FormControl>
+                  <Input type="time" placeholder="08:00" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -317,77 +261,21 @@ const UpsertDoctorForm = ({ doctor, onSuccess }: UpsertDoctorFormProps) => {
             name="availableToTime"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Horário final de disponibilidade</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um horário" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Manhã</SelectLabel>
-                      <SelectItem value="05:00:00">05:00</SelectItem>
-                      <SelectItem value="05:30:00">05:30</SelectItem>
-                      <SelectItem value="06:00:00">06:00</SelectItem>
-                      <SelectItem value="06:30:00">06:30</SelectItem>
-                      <SelectItem value="07:00:00">07:00</SelectItem>
-                      <SelectItem value="07:30:00">07:30</SelectItem>
-                      <SelectItem value="08:00:00">08:00</SelectItem>
-                      <SelectItem value="08:30:00">08:30</SelectItem>
-                      <SelectItem value="09:00:00">09:00</SelectItem>
-                      <SelectItem value="09:30:00">09:30</SelectItem>
-                      <SelectItem value="10:00:00">10:00</SelectItem>
-                      <SelectItem value="10:30:00">10:30</SelectItem>
-                      <SelectItem value="11:00:00">11:00</SelectItem>
-                      <SelectItem value="11:30:00">11:30</SelectItem>
-                      <SelectItem value="12:00:00">12:00</SelectItem>
-                      <SelectItem value="12:30:00">12:30</SelectItem>
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel>Tarde</SelectLabel>
-                      <SelectItem value="13:00:00">13:00</SelectItem>
-                      <SelectItem value="13:30:00">13:30</SelectItem>
-                      <SelectItem value="14:00:00">14:00</SelectItem>
-                      <SelectItem value="14:30:00">14:30</SelectItem>
-                      <SelectItem value="15:00:00">15:00</SelectItem>
-                      <SelectItem value="15:30:00">15:30</SelectItem>
-                      <SelectItem value="16:00:00">16:00</SelectItem>
-                      <SelectItem value="16:30:00">16:30</SelectItem>
-                      <SelectItem value="17:00:00">17:00</SelectItem>
-                      <SelectItem value="17:30:00">17:30</SelectItem>
-                      <SelectItem value="18:00:00">18:00</SelectItem>
-                      <SelectItem value="18:30:00">18:30</SelectItem>
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel>Noite</SelectLabel>
-                      <SelectItem value="19:00:00">19:00</SelectItem>
-                      <SelectItem value="19:30:00">19:30</SelectItem>
-                      <SelectItem value="20:00:00">20:00</SelectItem>
-                      <SelectItem value="20:30:00">20:30</SelectItem>
-                      <SelectItem value="21:00:00">21:00</SelectItem>
-                      <SelectItem value="21:30:00">21:30</SelectItem>
-                      <SelectItem value="22:00:00">22:00</SelectItem>
-                      <SelectItem value="22:30:00">22:30</SelectItem>
-                      <SelectItem value="23:00:00">23:00</SelectItem>
-                      <SelectItem value="23:30:00">23:30</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <FormLabel>Horário final</FormLabel>
+                <FormControl>
+                  <Input type="time" placeholder="18:00" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
           <DialogFooter>
-            <Button type="submit" disabled={upsertDoctorAction.isPending}>
-              {upsertDoctorAction.isPending
-                ? "Salvando..."
-                : doctor
-                  ? "Salvar"
-                  : "Adicionar"}
+            <Button
+              type="submit"
+              disabled={upsertDoctorAction.isExecuting}
+              className="w-full"
+            >
+              {upsertDoctorAction.isExecuting ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </form>
