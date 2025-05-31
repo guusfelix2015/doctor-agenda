@@ -2,13 +2,14 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { DataTable } from "@/components/ui/data-table";
 import { PageActions, PageContainer, PageContent, PageHeader, PageHeaderContent, PageHeaderDescription, PageHeaderTitle } from "@/components/ui/page-container";
 import { db } from "@/db";
 import { patientsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import AddPatientButton from "./_components/add-patient-button";
-import PatientCard from "./_components/patient-card";
+import { columns } from "./_components/table-columns";
 
 const PatientsPage = async () => {
   const session = await auth.api.getSession({
@@ -46,11 +47,7 @@ const PatientsPage = async () => {
             <p className="text-sm">Clique em &quot;Adicionar paciente&quot; para começar.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {patients.map((patient) => (
-              <PatientCard key={patient.id} patient={patient} />
-            ))}
-          </div>
+          <DataTable columns={columns} data={patients} />
         )}
       </PageContent>
     </PageContainer>
