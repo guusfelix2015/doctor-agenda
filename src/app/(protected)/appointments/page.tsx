@@ -2,12 +2,14 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { DataTable } from "@/components/ui/data-table";
 import { PageActions, PageContainer, PageContent, PageHeader, PageHeaderContent, PageHeaderDescription, PageHeaderTitle } from "@/components/ui/page-container";
 import { db } from "@/db";
-import { doctorsTable, patientsTable } from "@/db/schema";
+import { appointmentsTable, doctorsTable, patientsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import AddAppointmentButton from "./_components/add-appointment-button";
+import { columns } from "./_components/table-columns";
 
 const AppointmentsPage = async () => {
   const session = await auth.api.getSession({
@@ -22,7 +24,7 @@ const AppointmentsPage = async () => {
     redirect("/clinic-form");
   }
 
-  const [doctors, patients] = await Promise.all([
+  const [doctors, patients, appointments] = await Promise.all([
     db.query.doctorsTable.findMany({
       where: eq(doctorsTable.clinicId, session.user.clinic.id),
       orderBy: (doctors, { asc }) => [asc(doctors.name)],
@@ -30,6 +32,14 @@ const AppointmentsPage = async () => {
     db.query.patientsTable.findMany({
       where: eq(patientsTable.clinicId, session.user.clinic.id),
       orderBy: (patients, { asc }) => [asc(patients.name)],
+    }),
+    db.query.appointmentsTable.findMany({
+      where: eq(appointmentsTable.clinicId, session.user.clinic.id),
+      with: {
+        patient: true,
+        doctor: true,
+      },
+      orderBy: (appointments, { desc }) => [desc(appointments.appointmentDateTime)],
     }),
   ]);
 
@@ -45,10 +55,14 @@ const AppointmentsPage = async () => {
         </PageActions>
       </PageHeader>
       <PageContent>
-        <div className="text-center text-muted-foreground py-8">
-          <p>Funcionalidade de listagem será implementada em breve.</p>
-          <p className="text-sm">Por enquanto, apenas a criação de agendamentos está disponível.</p>
-        </div>
+        {appointments.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            <p>Nenhum agendamento cadastrado ainda.</p>
+            <p className="text-sm">Clique em &quot;Novo agendamento&quot; para começar.</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={appointments} />
+        )}
       </PageContent>
     </PageContainer>
   );

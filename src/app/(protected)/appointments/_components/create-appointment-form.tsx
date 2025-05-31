@@ -63,7 +63,7 @@ const formSchema = z.object({
   }),
 });
 
-interface UpsertAppointmentFormProps {
+interface CreateAppointmentFormProps {
   doctors: (typeof doctorsTable.$inferSelect)[];
   patients: (typeof patientsTable.$inferSelect)[];
   onSuccess?: () => void;
@@ -91,7 +91,7 @@ const generateTimeSlots = (startTime: string, endTime: string) => {
   return slots;
 };
 
-const UpsertAppointmentForm = ({ doctors, patients, onSuccess }: UpsertAppointmentFormProps) => {
+const CreateAppointmentForm = ({ doctors, patients, onSuccess }: CreateAppointmentFormProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -333,4 +333,4 @@ const UpsertAppointmentForm = ({ doctors, patients, onSuccess }: UpsertAppointme
   );
 };
 
-export default UpsertAppointmentForm; 
+export default CreateAppointmentForm; 
