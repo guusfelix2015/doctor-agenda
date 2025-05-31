@@ -27,9 +27,13 @@ export const createAppointment = actionClient
     }
 
     // Combina a data com o horário para criar um timestamp completo
+    const timeParts = parsedInput.time.split(':');
+    const hour = parseInt(timeParts[0]) || 0;
+    const minute = parseInt(timeParts[1]) || 0;
+
     const appointmentDateTime = dayjs(parsedInput.date)
-      .set('hour', parseInt(parsedInput.time.split(':')[0]))
-      .set('minute', parseInt(parsedInput.time.split(':')[1]))
+      .set('hour', hour)
+      .set('minute', minute)
       .set('second', 0)
       .set('millisecond', 0)
       .toDate();

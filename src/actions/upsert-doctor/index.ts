@@ -1,7 +1,5 @@
 "use server";
 
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
@@ -12,50 +10,54 @@ import { actionClient } from "@/lib/next-safe-action";
 
 import { upsertDoctorSchema } from "./schema";
 
-dayjs.extend(utc);
-
 export const upsertDoctor = actionClient
   .schema(upsertDoctorSchema)
   .action(async ({ parsedInput }) => {
-    const availableFromTime = parsedInput.availableFromTime; // 15:30:00
-    const availableToTime = parsedInput.availableToTime; // 16:00:00
+    const availableFromTime = parsedInput.availableFromTime; // "15:30" or "15:30:00"
+    const availableToTime = parsedInput.availableToTime; // "16:00" or "16:00:00"
 
-    const availableFromTimeUTC = dayjs()
-      .set("hour", parseInt(availableFromTime.split(":")[0])) // 15
-      .set("minute", parseInt(availableFromTime.split(":")[1])) // 30
-      .set("second", parseInt(availableFromTime.split(":")[2])) // 00
-      .utc();
-    const availableToTimeUTC = dayjs()
-      .set("hour", parseInt(availableToTime.split(":")[0]))
-      .set("minute", parseInt(availableToTime.split(":")[1]))
-      .set("second", parseInt(availableToTime.split(":")[2]))
-      .utc();
+    // Função para normalizar horário para formato HH:MM:SS
+    const normalizeTime = (timeString: string) => {
+      const parts = timeString.split(":");
+      const hour = String(parseInt(parts[0]) || 0).padStart(2, '0');
+      const minute = String(parseInt(parts[1]) || 0).padStart(2, '0');
+      const second = String(parseInt(parts[2]) || 0).padStart(2, '0');
+
+      return `${hour}:${minute}:${second}`;
+    };
+
+    const normalizedFromTime = normalizeTime(availableFromTime);
+    const normalizedToTime = normalizeTime(availableToTime);
 
     const session = await auth.api.getSession({
       headers: await headers(),
     });
+
     if (!session?.user) {
       throw new Error("Unauthorized");
     }
+
     if (!session?.user.clinic?.id) {
       throw new Error("Clinic not found");
     }
+
     await db
       .insert(doctorsTable)
       .values({
         ...parsedInput,
         id: parsedInput.id,
         clinicId: session?.user.clinic?.id,
-        availableFromTime: availableFromTimeUTC.format("HH:mm:ss"),
-        availableToTime: availableToTimeUTC.format("HH:mm:ss"),
+        availableFromTime: normalizedFromTime,
+        availableToTime: normalizedToTime,
       })
       .onConflictDoUpdate({
         target: [doctorsTable.id],
         set: {
           ...parsedInput,
-          availableFromTime: availableFromTimeUTC.format("HH:mm:ss"),
-          availableToTime: availableToTimeUTC.format("HH:mm:ss"),
+          availableFromTime: normalizedFromTime,
+          availableToTime: normalizedToTime,
         },
       });
+
     revalidatePath("/doctors");
   });

@@ -106,8 +106,10 @@ const DoctorCard = ({ doctor }: DoctorCardProps) => {
           <UpsertDoctorForm
             doctor={{
               ...doctor,
-              availableFromTime: availability.from.format("HH:mm:ss"),
-              availableToTime: availability.to.format("HH:mm:ss"),
+              // Passa os horários como estão no banco (já no formato correto HH:MM:SS)
+              // Sem conversões de timezone para evitar problemas de horário
+              availableFromTime: doctor.availableFromTime,
+              availableToTime: doctor.availableToTime,
             }}
             onSuccess={() => setIsUpsertDoctorDialogOpen(false)}
           />

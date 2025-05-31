@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { doctorsTable, patientsTable } from "@/db/schema";
+import { appointmentsTable, doctorsTable, patientsTable } from "@/db/schema";
 import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
@@ -63,35 +63,101 @@ const formSchema = z.object({
   }),
 });
 
+type ExistingAppointment = typeof appointmentsTable.$inferSelect & {
+  patient: typeof patientsTable.$inferSelect;
+  doctor: typeof doctorsTable.$inferSelect;
+};
+
 interface CreateAppointmentFormProps {
   doctors: (typeof doctorsTable.$inferSelect)[];
   patients: (typeof patientsTable.$inferSelect)[];
+  existingAppointments: ExistingAppointment[];
   onSuccess?: () => void;
 }
 
 // Função para gerar horários disponíveis baseados na disponibilidade do médico
 const generateTimeSlots = (startTime: string, endTime: string) => {
   const slots = [];
-  const start = new Date(`2000-01-01T${startTime}`);
-  const end = new Date(`2000-01-01T${endTime}`);
 
-  const current = new Date(start);
+  // Parse do horário inicial
+  const startParts = startTime.split(':');
+  let currentHour = parseInt(startParts[0]);
+  let currentMinute = parseInt(startParts[1]);
 
-  while (current < end) {
-    const timeString = current.toTimeString().slice(0, 5); // HH:MM format
+  // Parse do horário final
+  const endParts = endTime.split(':');
+  const endHour = parseInt(endParts[0]);
+  const endMinute = parseInt(endParts[1]);
+
+  // Converte tudo para minutos para comparação mais fácil
+  const endTotalMinutes = endHour * 60 + endMinute;
+
+  while (true) {
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+
+    // Para quando chegar no horário final
+    if (currentTotalMinutes >= endTotalMinutes) {
+      break;
+    }
+
+    // Formata o horário atual
+    const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
     slots.push({
       value: timeString,
       label: timeString,
+      disabled: false,
     });
 
     // Adiciona 30 minutos
-    current.setMinutes(current.getMinutes() + 30);
+    currentMinute += 30;
+    if (currentMinute >= 60) {
+      currentMinute -= 60;
+      currentHour += 1;
+    }
   }
 
   return slots;
 };
 
-const CreateAppointmentForm = ({ doctors, patients, onSuccess }: CreateAppointmentFormProps) => {
+// Função para marcar horários ocupados como indisponíveis
+const markUnavailableSlots = (
+  allSlots: { value: string; label: string; disabled: boolean }[],
+  existingAppointments: ExistingAppointment[],
+  doctorId: string,
+  selectedDate: Date
+) => {
+  if (!selectedDate || !doctorId) return allSlots;
+
+  // Filtra agendamentos do médico na data selecionada
+  const appointmentsOnDate = existingAppointments.filter(appointment => {
+    if (appointment.doctorId !== doctorId) return false;
+
+    const appointmentDate = new Date(appointment.appointmentDateTime);
+    const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
+    const appointmentDateString = format(appointmentDate, 'yyyy-MM-dd');
+
+    return selectedDateString === appointmentDateString;
+  });
+
+  // Cria set com horários ocupados
+  const occupiedTimes = new Set(
+    appointmentsOnDate.map(appointment => {
+      const appointmentDate = new Date(appointment.appointmentDateTime);
+      return format(appointmentDate, 'HH:mm');
+    })
+  );
+
+  // Marca horários ocupados como disabled e adiciona texto
+  return allSlots.map(slot => ({
+    ...slot,
+    disabled: occupiedTimes.has(slot.value),
+    label: occupiedTimes.has(slot.value)
+      ? `${slot.value} (indisponível)`
+      : slot.value,
+  }));
+};
+
+const CreateAppointmentForm = ({ doctors, patients, existingAppointments, onSuccess }: CreateAppointmentFormProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -105,19 +171,29 @@ const CreateAppointmentForm = ({ doctors, patients, onSuccess }: CreateAppointme
 
   const watchedDoctorId = form.watch("doctorId");
   const watchedPatientId = form.watch("patientId");
+  const watchedDate = form.watch("date");
   const selectedDoctor = doctors.find(doctor => doctor.id === watchedDoctorId);
 
-  // Gera os horários disponíveis baseados no médico selecionado
+  // Gera os horários disponíveis baseados no médico selecionado e filtra os ocupados
   const availableTimeSlots = useMemo(() => {
     if (!selectedDoctor?.availableFromTime || !selectedDoctor?.availableToTime) {
       return [];
     }
 
-    return generateTimeSlots(
+    // Gera todos os horários possíveis
+    const allSlots = generateTimeSlots(
       selectedDoctor.availableFromTime,
       selectedDoctor.availableToTime
     );
-  }, [selectedDoctor]);
+
+    // Filtra horários já ocupados
+    return markUnavailableSlots(
+      allSlots,
+      existingAppointments,
+      watchedDoctorId,
+      watchedDate
+    );
+  }, [selectedDoctor, existingAppointments, watchedDoctorId, watchedDate]);
 
   // Server Action
   const createAppointmentAction = useAction(createAppointment, {
@@ -138,10 +214,10 @@ const CreateAppointmentForm = ({ doctors, patients, onSuccess }: CreateAppointme
     }
   }, [selectedDoctor, form]);
 
-  // Limpa o horário quando o médico muda
+  // Limpa o horário quando o médico ou data muda
   useEffect(() => {
     form.setValue("time", "");
-  }, [watchedDoctorId, form]);
+  }, [watchedDoctorId, watchedDate, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     createAppointmentAction.execute({
@@ -298,16 +374,26 @@ const CreateAppointmentForm = ({ doctors, patients, onSuccess }: CreateAppointme
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!isPatientAndDoctorSelected}
+                  disabled={!isPatientAndDoctorSelected || !watchedDate}
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um horário" />
+                      <SelectValue placeholder={
+                        !watchedDate
+                          ? "Selecione uma data primeiro"
+                          : availableTimeSlots.length === 0
+                            ? "Nenhum horário disponível"
+                            : "Selecione um horário"
+                      } />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {availableTimeSlots.map((slot) => (
-                      <SelectItem key={slot.value} value={slot.value}>
+                      <SelectItem
+                        key={slot.value}
+                        value={slot.value}
+                        disabled={slot.disabled}
+                      >
                         {slot.label}
                       </SelectItem>
                     ))}
