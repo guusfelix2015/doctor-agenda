@@ -103,6 +103,8 @@ export const appointmentsTable = pgTable("appointments", {
   patientId: uuid("patient_id").references(() => patientsTable.id),
   doctorId: uuid("doctor_id").references(() => doctorsTable.id),
   clinicId: uuid("clinic_id").references(() => clinicsTable.id),
+  appointmentDateTime: timestamp("appointment_date_time").notNull(),
+  appointmentPriceInCents: integer("appointment_price_in_cents").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });

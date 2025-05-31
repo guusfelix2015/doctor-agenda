@@ -1,0 +1,57 @@
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { PageActions, PageContainer, PageContent, PageHeader, PageHeaderContent, PageHeaderDescription, PageHeaderTitle } from "@/components/ui/page-container";
+import { db } from "@/db";
+import { doctorsTable, patientsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+
+import AddAppointmentButton from "./_components/add-appointment-button";
+
+const AppointmentsPage = async () => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user) {
+    redirect("/authentication");
+  }
+
+  if (!session.user.clinic) {
+    redirect("/clinic-form");
+  }
+
+  const [doctors, patients] = await Promise.all([
+    db.query.doctorsTable.findMany({
+      where: eq(doctorsTable.clinicId, session.user.clinic.id),
+      orderBy: (doctors, { asc }) => [asc(doctors.name)],
+    }),
+    db.query.patientsTable.findMany({
+      where: eq(patientsTable.clinicId, session.user.clinic.id),
+      orderBy: (patients, { asc }) => [asc(patients.name)],
+    }),
+  ]);
+
+  return (
+    <PageContainer>
+      <PageHeader>
+        <PageHeaderContent>
+          <PageHeaderTitle>Agendamentos</PageHeaderTitle>
+          <PageHeaderDescription>Gerencie os agendamentos do sistema</PageHeaderDescription>
+        </PageHeaderContent>
+        <PageActions>
+          <AddAppointmentButton doctors={doctors} patients={patients} />
+        </PageActions>
+      </PageHeader>
+      <PageContent>
+        <div className="text-center text-muted-foreground py-8">
+          <p>Funcionalidade de listagem será implementada em breve.</p>
+          <p className="text-sm">Por enquanto, apenas a criação de agendamentos está disponível.</p>
+        </div>
+      </PageContent>
+    </PageContainer>
+  );
+};
+
+export default AppointmentsPage; 
