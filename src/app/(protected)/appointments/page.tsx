@@ -9,7 +9,7 @@ import { appointmentsTable, doctorsTable, patientsTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import AddAppointmentButton from "./_components/add-appointment-button";
-import { columns } from "./_components/table-columns";
+import { appointmentsTableColumns } from "./_components/table-columns";
 
 const AppointmentsPage = async () => {
   const session = await auth.api.getSession({
@@ -54,7 +54,11 @@ const AppointmentsPage = async () => {
           <AddAppointmentButton
             doctors={doctors}
             patients={patients}
-            existingAppointments={appointments}
+            existingAppointments={appointments.map(appointment => ({
+              ...appointment,
+              patient: appointment.patient!,
+              doctor: appointment.doctor!
+            }))}
           />
         </PageActions>
       </PageHeader>
@@ -65,7 +69,14 @@ const AppointmentsPage = async () => {
             <p className="text-sm">Clique em &quot;Novo agendamento&quot; para começar.</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={appointments} />
+          <DataTable
+            columns={appointmentsTableColumns}
+            data={appointments.map(appointment => ({
+              ...appointment,
+              patient: appointment.patient!,
+              doctor: appointment.doctor!
+            }))}
+          />
         )}
       </PageContent>
     </PageContainer>

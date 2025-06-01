@@ -96,7 +96,7 @@ const ActionsCell = ({ appointment }: { appointment: Appointment }) => {
   );
 };
 
-export const columns: ColumnDef<Appointment>[] = [
+export const appointmentsTableColumns: ColumnDef<Appointment>[] = [
   {
     accessorKey: "patient.name",
     header: "Paciente",

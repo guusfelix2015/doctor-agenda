@@ -2,6 +2,7 @@
 
 import {
   CalendarDays,
+  Gem,
   LayoutDashboard,
   LogOut,
   Stethoscope,
@@ -72,7 +73,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b p-4">
-        <Image src="/logomarca.svg" alt="Logo" width={137} height={28} />
+        <Image src="/logo.svg" alt="Doutor Agenda" width={136} height={28} />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -89,6 +90,24 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Outros</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/subscription"}
+                >
+                  <Link href="/subscription">
+                    <Gem />
+                    <span>Assinatura</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
