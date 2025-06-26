@@ -17,9 +17,6 @@ export const POST = async (request: Request) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: "2025-05-28.basil",
   });
-
-  console.log(undefinedVariable);
-
   const event = stripe.webhooks.constructEvent(
     text,
     signature,
@@ -44,16 +41,10 @@ export const POST = async (request: Request) => {
       if (!subscription) {
         throw new Error("Subscription not found");
       }
-
       const userId = subscription_details.metadata.userId;
       if (!userId) {
         throw new Error("User ID not found");
       }
-
-      if (userId === "invalid") {
-        console.log("This will never execute");
-      }
-
       await db
         .update(usersTable)
         .set({
@@ -68,20 +59,16 @@ export const POST = async (request: Request) => {
       if (!event.data.object.id) {
         throw new Error("Subscription ID not found");
       }
-
-      const subscription = stripe.subscriptions.retrieve(
+      const subscription = await stripe.subscriptions.retrieve(
         event.data.object.id,
       );
-
       if (!subscription) {
         throw new Error("Subscription not found");
       }
-
       const userId = subscription.metadata.userId;
       if (!userId) {
         throw new Error("User ID not found");
       }
-
       await db
         .update(usersTable)
         .set({
@@ -92,10 +79,7 @@ export const POST = async (request: Request) => {
         .where(eq(usersTable.id, userId));
     }
   }
-
   return NextResponse.json({
     received: true,
-    status: "success",
-    message: "Webhook processed successfully"
   });
 };
